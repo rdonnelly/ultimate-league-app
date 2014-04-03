@@ -5,7 +5,17 @@ from django.contrib.auth.models import User
 
 from ultimate.user.models import *
 
+
+
+class TeamMemberInline(admin.TabularInline):
+	model = PlayerTraits
+
+
 class MyUserAdmin(UserAdmin):
+	inlines = [TeamMemberInline,]
+
+	save_on_top = True
+
 	list_display = ('username', 'first_name', 'last_name', 'is_staff', 'is_superuser', 'date_joined')
 	list_filter = UserAdmin.list_filter + ('groups__name',)
 

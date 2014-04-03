@@ -125,6 +125,7 @@ class TeamMemberInline(admin.TabularInline):
 
 class TeamAdmin(admin.ModelAdmin):
 	inlines = [TeamMemberInline,]
+
 	save_as = True
 	save_on_top = True
 
