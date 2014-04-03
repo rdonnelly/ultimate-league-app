@@ -130,3 +130,25 @@ class PlayerRatingsReport(models.Model):
 
 	def __unicode__(self):
 		return '%s, %s, %s' % (self.team, self.team.league, self.submitted_by)
+
+
+class PlayerTraits(models.Model):
+	PLAYER_TRAIT_TYPES = (
+		('bool',	u'bool'),
+		('float',	u'float'),
+		('int',		u'int'),
+		('string',	u'string'),
+	)
+
+	id = models.AutoField(primary_key=True)
+	key = models.CharField(max_length=255)
+	value = models.CharField(max_length=255)
+	type = models.CharField(max_length=32, choices=PLAYER_TRAIT_TYPES)
+	user = models.ForeignKey(User)
+
+	class Meta:
+		db_table = u'player_traits'
+		verbose_name_plural = 'player traits'
+
+	def __unicode__(self):
+		return '%s %s %s' % (self.user, self.key, self.value)
