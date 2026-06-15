@@ -130,20 +130,26 @@ class Command(BaseCommand):
             )
 
     def handle(self, *args, **options):
-        email_address = options.get("email", None)
-        file_path = options.get("file", None)
-        team_id = options.get("team", None)
-        league_id = options.get("league", None)
-        season_slug = options.get("season", None)
-        year = options.get("year", None)
-        pickup = options.get("pickup", None)
-        group_address = options.get("group_address", None)
-        force = options.get("force", None)
+        email_address = options["email"]
+        file_path = options["file"]
+        team_id = options["team"]
+        league_id = options["league"]
+        season_slug = options["season"]
+        year = options["year"]
+        pickup = options["pickup"]
+        group_address = options["group_address"]
+        force = options["force"]
 
         if not group_address and (email_address or file_path):
             raise CommandError(
                 "group address (-g) is required with email (-e) or file (-f)"
             )
+
+        if (season_slug and not year) or (year and not season_slug):
+            raise CommandError("season (-s) and year (-y) must be given together")
+
+        if year and not year.isdigit():
+            raise CommandError("year (-y) must be a numeric year, e.g. 2019")
 
         if email_address:
             self._handle_email(email_address, group_address)
@@ -291,88 +297,10 @@ class Command(BaseCommand):
                 self._report_sync_result(pickup_result, pickup_group_address)
 
             else:
-                self.stdout.write(
-                    self.style.MIGRATE_HEADING(
-                        "Syncing season list for {} {}:".format(
-                            season_slug, year[-2:]
-                        )
-                    )
+                raise CommandError(
+                    "Season list sync (without -p) is not implemented; "
+                    "use -p to sync the pickup list."
                 )
-
-                # # ALL
-
-                # all_group_address = '{}{}@lists.annarborultimate.org'.format(season.slug, year[-2:])
-                # all_group_name = '{} {}'.format(season.name, year)
-                # all_group_id = api.prepare_group_for_sync(
-                #     group_name=all_group_name,
-                #     group_email_address=all_group_address,
-                #     force=force)
-
-                # all_team_members = TeamMember.objects.filter(team__league__season__slug=season.slug, team__league__year=year)
-                # all_target_count = all_team_members.count()
-                # all_success_count = 0
-                # for team_member in all_team_members:
-                #     all_success_count += add_to_group(
-                #         group_email_address=all_group_address,
-                #         group_id=all_group_id,
-                #         email_address=team_member.user.email)
-
-                # # MEN
-
-                # men_group_address = '{}{}-men@lists.annarborultimate.org'.format(season.slug, year[-2:])
-                # men_group_name = '{} {} Men'.format(season.name, year)
-                # men_group_id = api.prepare_group_for_sync(
-                #     group_name=men_group_name,
-                #     group_email_address=men_group_address,
-                #     force=force)
-
-                # men_team_members = TeamMember.objects.filter(team__league__season__slug=season.slug, team__league__year=year, user__profile__gender__iexact='M')
-                # men_target_count = men_team_members.count()
-                # men_success_count = 0
-                # for team_member in men_team_members:
-                #     men_success_count += add_to_group(
-                #         group_email_address=men_group_address,
-                #         group_id=men_group_id,
-                #         email_address=team_member.user.email)
-
-                # # WOMEN
-
-                # women_group_address = '{}{}-women@lists.annarborultimate.org'.format(season.slug, year[-2:])
-                # women_group_name = '{} {} Women'.format(season.name, year)
-                # women_group_id = api.prepare_group_for_sync(
-                #     group_name=women_group_name,
-                #     group_email_address=women_group_address,
-                #     force=force)
-
-                # women_team_members = TeamMember.objects.filter(team__league__season__slug=season.slug, team__league__year=year, user__profile__gender__iexact='F')
-                # women_target_count = women_team_members.count()
-                # women_success_count = 0
-                # for team_member in women_team_members:
-                #     women_success_count += add_to_group(
-                #         group_email_address=women_group_address,
-                #         group_id=women_group_id,
-                #         email_address=team_member.user.email)
-
-                # if all_success_count == all_team_members.count():
-                #     self.stdout.write(self.style.SUCCESS('SUCCESS'))
-                #     self.stdout.write(self.style.SUCCESS('Added {} of {} email addresses to {}'.format(all_success_count, all_target_count, all_group_address)))
-                # else:
-                #     self.stdout.write(self.style.ERROR('HMMM...'))
-                #     self.stdout.write(self.style.ERROR('Added {} of {} email addresses to {}'.format(all_success_count, all_target_count, all_group_address)))
-
-                # if men_success_count == men_team_members.count():
-                #     self.stdout.write(self.style.SUCCESS('SUCCESS'))
-                #     self.stdout.write(self.style.SUCCESS('Added {} of {} email addresses to {}'.format(men_success_count, men_target_count, men_group_address)))
-                # else:
-                #     self.stdout.write(self.style.ERROR('HMMM...'))
-                #     self.stdout.write(self.style.ERROR('Added {} of {} email addresses to {}'.format(men_success_count, men_target_count, men_group_address)))
-
-                # if women_success_count == women_team_members.count():
-                #     self.stdout.write(self.style.SUCCESS('SUCCESS'))
-                #     self.stdout.write(self.style.SUCCESS('Added {} of {} email addresses to {}'.format(women_success_count, women_target_count, women_group_address)))
-                # else:
-                #     self.stdout.write(self.style.ERROR('HMMM...'))
-                #     self.stdout.write(self.style.ERROR('Added {} of {} email addresses to {}'.format(women_success_count, women_target_count, women_group_address)))
 
         except Season.DoesNotExist:
             self.stdout.write(self.style.ERROR("No season found with that slug"))
