@@ -256,7 +256,7 @@ class League(models.Model):
     state = models.CharField(
         max_length=32,
         choices=LEAGUE_STATE_CHOICES,
-        help_text="state of league, changes whether registration is open or league is visible",
+        help_text="state of league, controls visibility and whether registration is open",
     )
 
     image_cover = models.ImageField(
@@ -1046,7 +1046,6 @@ class Registrations(models.Model):
             and not self.paypal_complete
             and not self.payment_complete
         ):
-
             return False
 
         if self.refunded:
@@ -1064,7 +1063,6 @@ class Registrations(models.Model):
             and not self.paypal_complete
             and not self.payment_complete
         ):
-
             return False
 
         if not self.refunded:
@@ -1357,7 +1355,6 @@ class Team(models.Model):
 
         games = self.game_set.all()
         for game in games:
-
             team_reports = game.gamereport_set.filter(team=self)
             opponent_reports = game.gamereport_set.exclude(team=self)
             points_for = float(0)
@@ -1405,7 +1402,6 @@ class Team(models.Model):
                 or (team_result == 1 and opponent_result == 0)
                 or (opponent_result == 1 and team_result == 0)
             ):
-
                 team_record["wins"] += 1
 
             elif (
@@ -1413,7 +1409,6 @@ class Team(models.Model):
                 or (team_result == 2 and opponent_result == 0)
                 or (opponent_result == 2 and team_result == 0)
             ):
-
                 team_record["losses"] += 1
 
             elif (
@@ -1421,7 +1416,6 @@ class Team(models.Model):
                 or (team_result == 3 and opponent_result == 0)
                 or (opponent_result == 3 and team_result == 0)
             ):
-
                 team_record["ties"] += 1
 
             elif (
@@ -1429,11 +1423,9 @@ class Team(models.Model):
                 and team_result != 0
                 and opponent_result != 0
             ):
-
                 team_record["conflicts"] += 1
 
             else:
-
                 team_record["blanks"] += 1
 
             if report_count > 1:
