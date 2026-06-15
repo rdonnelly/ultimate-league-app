@@ -6,6 +6,22 @@ from django.db.models.functions import Lower
 from ultimate.utils.email_groups import add_to_group
 
 
+# Which seasons feed each season's pickup list, as (season_slug, year_offset)
+# pairs. year_offset is relative to the target year: 0 = the target year, -1 =
+# the previous year. A pickup list is the target season plus the two seasons
+# leading into it, so a recent player can be pulled in to fill a roster.
+#
+# late-fall is the exception: it is one division, so it pulls from summer and
+# fall of the same year but is deliberately NOT included in any list itself.
+PICKUP_SEASON_WINDOWS = {
+    "winter": [("fall", -1), ("late-fall", -1), ("winter", 0)],
+    "spring": [("late-fall", -1), ("winter", 0), ("spring", 0)],
+    "summer": [("winter", 0), ("spring", 0), ("summer", 0)],
+    "fall": [("spring", 0), ("summer", 0), ("fall", 0)],
+    "late-fall": [("summer", 0), ("fall", 0)],
+}
+
+
 class Command(BaseCommand):
     help = "Add members to an email group from an email address, file, or team id"
 
@@ -206,6 +222,33 @@ class Command(BaseCommand):
         except League.DoesNotExist:
             self.stdout.write(self.style.ERROR("No league division found with that id"))
 
+    def _pickup_emails(self, TeamMember, season_slug, year):
+        """Return the set of lowercased member emails for a season's pickup list.
+
+        Builds the query from PICKUP_SEASON_WINDOWS: one (slug, year) clause per
+        contributing season, OR'd together.
+        """
+        year = int(year)
+        window = PICKUP_SEASON_WINDOWS.get(season_slug, [])
+
+        season_filter = Q()
+        for slug, year_offset in window:
+            season_filter |= Q(
+                team__league__season__slug=slug,
+                team__league__year=str(year + year_offset),
+            )
+
+        if not window:
+            return set()
+
+        team_members = (
+            TeamMember.objects.filter(season_filter)
+            .values()
+            .annotate(email=Lower("user__email"))
+        )
+
+        return {team_member["email"] for team_member in team_members}
+
     def _handle_season(self, season_slug, year, pickup, force):
         from ultimate.leagues.models import Season, TeamMember
 
@@ -223,120 +266,9 @@ class Command(BaseCommand):
                     )
                 )
 
-                pickup_team_members = []
-                previous_year = str(int(year) - 1)
-
-                if season_slug == "winter":
-                    pickup_team_members = (
-                        TeamMember.objects.filter(
-                            Q(
-                                Q(
-                                    Q(team__league__season__slug="fall")
-                                    & Q(team__league__year=previous_year)
-                                )
-                                | Q(
-                                    Q(team__league__season__slug="late-fall")
-                                    & Q(team__league__year=previous_year)
-                                )
-                                | Q(
-                                    Q(team__league__season__slug="winter")
-                                    & Q(team__league__year=year)
-                                )
-                            )
-                        )
-                        .values()
-                        .annotate(email=Lower("user__email"))
-                        .order_by("user__email")
-                    )
-                elif season_slug == "spring":
-                    pickup_team_members = (
-                        TeamMember.objects.filter(
-                            Q(
-                                Q(
-                                    Q(team__league__season__slug="late-fall")
-                                    & Q(team__league__year=previous_year)
-                                )
-                                | Q(
-                                    Q(team__league__season__slug="winter")
-                                    & Q(team__league__year=year)
-                                )
-                                | Q(
-                                    Q(team__league__season__slug="spring")
-                                    & Q(team__league__year=year)
-                                )
-                            )
-                        )
-                        .values()
-                        .annotate(email=Lower("user__email"))
-                        .order_by("user__email")
-                    )
-                elif season_slug == "summer":
-                    pickup_team_members = (
-                        TeamMember.objects.filter(
-                            Q(
-                                Q(
-                                    Q(team__league__season__slug="winter")
-                                    & Q(team__league__year=year)
-                                )
-                                | Q(
-                                    Q(team__league__season__slug="spring")
-                                    & Q(team__league__year=year)
-                                )
-                                | Q(
-                                    Q(team__league__season__slug="summer")
-                                    & Q(team__league__year=year)
-                                )
-                            )
-                        )
-                        .values()
-                        .annotate(email=Lower("user__email"))
-                        .order_by("user__email")
-                    )
-                elif season_slug == "fall":
-                    pickup_team_members = (
-                        TeamMember.objects.filter(
-                            Q(
-                                Q(
-                                    Q(team__league__season__slug="spring")
-                                    & Q(team__league__year=year)
-                                )
-                                | Q(
-                                    Q(team__league__season__slug="summer")
-                                    & Q(team__league__year=year)
-                                )
-                                | Q(
-                                    Q(team__league__season__slug="fall")
-                                    & Q(team__league__year=year)
-                                )
-                            )
-                        )
-                        .values()
-                        .annotate(email=Lower("user__email"))
-                        .order_by("user__email")
-                    )
-                elif season_slug == "late-fall":
-                    # do not include late fall since there is only one division
-                    pickup_team_members = (
-                        TeamMember.objects.filter(
-                            Q(
-                                Q(
-                                    Q(team__league__season__slug="summer")
-                                    & Q(team__league__year=year)
-                                )
-                                | Q(
-                                    Q(team__league__season__slug="fall")
-                                    & Q(team__league__year=year)
-                                )
-                            )
-                        )
-                        .values()
-                        .annotate(email=Lower("user__email"))
-                        .order_by("user__email")
-                    )
-
-                pickup_email_addresses = {
-                    ptm["email"] for ptm in pickup_team_members
-                }
+                pickup_email_addresses = self._pickup_emails(
+                    TeamMember, season_slug, year
+                )
 
                 pickup_group_address = (
                     "{}{}-pickups@lists.annarborultimate.org".format(
