@@ -335,9 +335,9 @@ class Command(BaseCommand):
                             .order_by("user__email")
                         )
 
-                    pickup_email_addresses = list(
-                        set([ptm["email"] for ptm in pickup_team_members])
-                    )
+                    pickup_email_addresses = {
+                        ptm["email"] for ptm in pickup_team_members
+                    }
 
                     pickup_group_address = (
                         "{}{}-pickups@lists.annarborultimate.org".format(
@@ -351,37 +351,13 @@ class Command(BaseCommand):
                         force=force,
                     )
 
-                    pickup_target_count = len(pickup_email_addresses)
-                    pickup_success_count = 0
-                    for pickup_email_address in pickup_email_addresses:
-                        pickup_success_count += add_to_group(
-                            group_email_address=pickup_group_address,
-                            group_id=pickup_group_id,
-                            email_address=pickup_email_address,
-                        )
+                    pickup_result = api.sync_group_members(
+                        pickup_email_addresses,
+                        group_id=pickup_group_id,
+                        group_email_address=pickup_group_address,
+                    )
 
-                    if pickup_success_count == pickup_target_count:
-                        self.stdout.write(self.style.SUCCESS("SUCCESS"))
-                        self.stdout.write(
-                            self.style.SUCCESS(
-                                "Added {} of {} email addresses to {}".format(
-                                    pickup_success_count,
-                                    pickup_target_count,
-                                    pickup_group_address,
-                                )
-                            )
-                        )
-                    else:
-                        self.stdout.write(self.style.ERROR("HMMM..."))
-                        self.stdout.write(
-                            self.style.ERROR(
-                                "Added {} of {} email addresses to {}".format(
-                                    pickup_success_count,
-                                    pickup_target_count,
-                                    pickup_group_address,
-                                )
-                            )
-                        )
+                    self._report_sync_result(pickup_result, pickup_group_address)
 
                 else:
                     self.stdout.write(
