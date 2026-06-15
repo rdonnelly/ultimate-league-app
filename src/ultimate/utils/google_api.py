@@ -196,6 +196,68 @@ class GoogleAppsApi:
 
         logger.debug("    Done")
 
+    def _resolve_group_id(self, service, group_email_address):
+        """Look up a group's id by its email address. Returns None if not found."""
+        try:
+            groups_response = (
+                service.groups()
+                .list(
+                    customer="my_customer",
+                    domain="lists.annarborultimate.org",
+                    query="email={}".format(group_email_address),
+                )
+                .execute(http=self.http)
+            )
+        except Exception:
+            return None
+
+        if groups_response and groups_response.get("groups"):
+            for group in groups_response.get("groups"):
+                if group.get("email") == group_email_address:
+                    return group.get("id", None)
+
+        return None
+
+    def list_group_members(self, group_id=None, group_email_address=None):
+        """Return the set of lowercased member email addresses for a group.
+
+        Pages through the full membership (the Directory API returns at most
+        200 members per response) so callers get every member, not just the
+        first page. Returns an empty set if the group can't be resolved.
+        """
+        service = build("admin", "directory_v1", http=self.http, cache_discovery=False)
+
+        if group_email_address and not group_id:
+            group_id = self._resolve_group_id(service, group_email_address)
+
+        emails = set()
+
+        if not group_id:
+            return emails
+
+        page_token = None
+        while True:
+            try:
+                members_response = (
+                    service.members()
+                    .list(groupKey=group_id, pageToken=page_token)
+                    .execute(http=self.http, num_retries=API_NUM_RETRIES)
+                )
+            except Exception:
+                logger.debug("    Members could not be listed")
+                break
+
+            for member in members_response.get("members", []):
+                email = member.get("email")
+                if email:
+                    emails.add(email.lower())
+
+            page_token = members_response.get("nextPageToken")
+            if not page_token:
+                break
+
+        return emails
+
     def add_group_member(
         self, email_address, group_id=None, group_email_address=None, group_name=None
     ):
