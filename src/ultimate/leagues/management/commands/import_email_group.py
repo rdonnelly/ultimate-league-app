@@ -76,6 +76,43 @@ class Command(BaseCommand):
             help="force group create or find (only for team)",
         )
 
+    def _report_sync_result(self, result, group_address):
+        """Print the outcome of a diff-based group sync (a GroupSyncResult)."""
+        failed = result.failed_add + result.failed_remove
+
+        if not failed:
+            self.stdout.write(self.style.SUCCESS("SUCCESS"))
+            style = self.style.SUCCESS
+        else:
+            self.stdout.write(self.style.ERROR("HMMM..."))
+            style = self.style.ERROR
+
+        self.stdout.write(
+            style(
+                "Synced {}: {} added, {} removed, {} total members".format(
+                    group_address,
+                    len(result.added),
+                    len(result.removed),
+                    result.target,
+                )
+            )
+        )
+
+        if result.failed_add:
+            self.stdout.write(
+                self.style.ERROR(
+                    "Could not add: {}".format(", ".join(sorted(result.failed_add)))
+                )
+            )
+        if result.failed_remove:
+            self.stdout.write(
+                self.style.ERROR(
+                    "Could not remove: {}".format(
+                        ", ".join(sorted(result.failed_remove))
+                    )
+                )
+            )
+
     def handle(self, *args, **options):
         email_address = options.get("email", None)
         file_path = options.get("file", None)
@@ -137,30 +174,8 @@ class Command(BaseCommand):
             try:
                 team = Team.objects.get(id=team_id)
 
-                success_count, group_address = team.sync_email_group(force)
-                target_count = team.size
-
-                if success_count == target_count:
-                    self.stdout.write(self.style.SUCCESS("SUCCESS"))
-                    self.stdout.write(
-                        self.style.SUCCESS(
-                            "Added {} of {} email addresses to {}".format(
-                                success_count, target_count, group_address
-                            )
-                        )
-                    )
-                elif success_count > 0:
-                    self.stdout.write(self.style.ERROR("HMMM..."))
-                    self.stdout.write(
-                        self.style.ERROR(
-                            "Added {} of {} email addresses to {}".format(
-                                success_count, target_count, group_address
-                            )
-                        )
-                    )
-                else:
-                    self.stdout.write(self.style.ERROR("HMMM..."))
-                    self.stdout.write(self.style.ERROR("No email addresses added..."))
+                result, group_address = team.sync_email_group(force)
+                self._report_sync_result(result, group_address)
 
             except Team.DoesNotExist:
                 self.stdout.write(self.style.ERROR("No team found with that id"))
@@ -176,57 +191,14 @@ class Command(BaseCommand):
                 league = League.objects.get(id=league_id)
 
                 (
-                    all_success_count,
+                    all_result,
                     group_address,
-                    captains_success_count,
+                    captains_result,
                     captains_group_address,
                 ) = league.sync_email_groups(force)
 
-                all_target_count = league.get_player_count()
-                captains_target_count = league.get_captain_count()
-
-                if (
-                    all_success_count == all_target_count
-                    and captains_success_count == captains_target_count
-                ):
-                    self.stdout.write(self.style.SUCCESS("SUCCESS"))
-                    self.stdout.write(
-                        self.style.SUCCESS(
-                            "Added {} of {} email addresses to {}".format(
-                                all_success_count, all_target_count, group_address
-                            )
-                        )
-                    )
-                    self.stdout.write(
-                        self.style.SUCCESS(
-                            "Added {} of {} email addresses to {}".format(
-                                captains_success_count,
-                                captains_target_count,
-                                captains_group_address,
-                            )
-                        )
-                    )
-                elif all_success_count > 0 or captains_success_count > 0:
-                    self.stdout.write(self.style.ERROR("HMMM..."))
-                    self.stdout.write(
-                        self.style.ERROR(
-                            "Added {} of {} email addresses to {}".format(
-                                all_success_count, all_target_count, group_address
-                            )
-                        )
-                    )
-                    self.stdout.write(
-                        self.style.ERROR(
-                            "Added {} of {} email addresses to {}".format(
-                                captains_success_count,
-                                captains_target_count,
-                                captains_group_address,
-                            )
-                        )
-                    )
-                else:
-                    self.stdout.write(self.style.ERROR("HMMM..."))
-                    self.stdout.write(self.style.ERROR("No email addresses added..."))
+                self._report_sync_result(all_result, group_address)
+                self._report_sync_result(captains_result, captains_group_address)
 
             except League.DoesNotExist:
                 self.stdout.write(

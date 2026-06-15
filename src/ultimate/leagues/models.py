@@ -13,7 +13,6 @@ from django.template.defaultfilters import slugify
 from django.utils import timezone
 
 from ultimate.utils.email_groups import (
-    add_to_group,
     generate_email_list_address,
     generate_email_list_name,
 )
@@ -788,30 +787,24 @@ class League(models.Model):
         self.division_email = group_address
         self.division_email_group_id = group_id
 
-        success_count = 0
-
         if Team.objects.filter(league=self).exists():
-            for team_member in TeamMember.objects.filter(team__league=self).order_by(
-                "user__email"
-            ):
-                success_count += add_to_group(
-                    group_email_address=group_address,
-                    group_id=group_id,
-                    email_address=team_member.user.email,
-                )
+            desired_emails = [
+                team_member.user.email
+                for team_member in TeamMember.objects.filter(team__league=self)
+            ]
         else:
-            for registration in sorted(
-                self.get_complete_registrations(), key=lambda r: r.user.email
-            ):
-                success_count += add_to_group(
-                    group_email_address=group_address,
-                    group_id=group_id,
-                    email_address=registration.user.email,
-                )
+            desired_emails = [
+                registration.user.email
+                for registration in self.get_complete_registrations()
+            ]
+
+        result = api.sync_group_members(
+            desired_emails, group_id=group_id, group_email_address=group_address
+        )
 
         self.save()
 
-        return success_count, group_address
+        return result, group_address
 
     def sync_division_captains_email_group(self, force=False):
         group_address = generate_email_list_address(self, suffix="captains")
@@ -830,20 +823,20 @@ class League(models.Model):
         self.division_captains_email = group_address
         self.division_captains_email_group_id = group_id
 
-        success_count = 0
-
-        for team_member in TeamMember.objects.filter(
-            team__league=self, captain=True
-        ).order_by("user__last_name"):
-            success_count += add_to_group(
-                group_email_address=group_address,
-                group_id=group_id,
-                email_address=team_member.user.email,
+        desired_emails = [
+            team_member.user.email
+            for team_member in TeamMember.objects.filter(
+                team__league=self, captain=True
             )
+        ]
+
+        result = api.sync_group_members(
+            desired_emails, group_id=group_id, group_email_address=group_address
+        )
 
         self.save()
 
-        return success_count, group_address
+        return result, group_address
 
 
 class LeagueFields(models.Model):
@@ -1463,19 +1456,17 @@ class Team(models.Model):
         self.email = group_address
         self.group_id = group_id
 
-        success_count = 0
-        for team_member in self.teammember_set.all().order_by(
-            "user__last_name", "user__first_name"
-        ):
-            success_count += add_to_group(
-                group_email_address=group_address,
-                group_id=group_id,
-                email_address=team_member.user.email,
-            )
+        desired_emails = [
+            team_member.user.email for team_member in self.teammember_set.all()
+        ]
+
+        result = api.sync_group_members(
+            desired_emails, group_id=group_id, group_email_address=group_address
+        )
 
         self.save()
 
-        return success_count, group_address
+        return result, group_address
 
 
 class TeamMember(models.Model):

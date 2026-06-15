@@ -57,15 +57,13 @@ class GoogleAppsApi:
     ):
         logger.debug('Preparing group "{}" for sync...'.format(group_name))
 
+        # force deliberately wipes the group (delete + recreate) for a clean
+        # slate. Without force we leave the existing members in place: the
+        # diff-based sync_group_members reconciles them, so there is no longer
+        # any need to remove everyone up front and re-add them.
         if force:
             self.delete_group(
                 group_id=group_id, group_email_address=group_email_address
-            )
-        else:
-            self.remove_all_group_members(
-                group_id=group_id,
-                group_email_address=group_email_address,
-                group_name=group_name,
             )
 
         return self.get_or_create_group(
