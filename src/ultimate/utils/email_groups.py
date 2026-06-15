@@ -11,9 +11,7 @@ def add_to_group(
     if email_address:
         time.sleep(2)
         if api.add_group_member(
-            email_address,
-            group_id=group_id,
-            group_email_address=group_email_address,
+            email_address, group_id=group_id, group_email_address=group_email_address
         ):
             success_count = success_count + 1
 

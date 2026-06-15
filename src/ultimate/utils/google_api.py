@@ -1,4 +1,5 @@
 from datetime import datetime
+import time
 import dateutil.parser
 import httplib2
 import logging
@@ -130,9 +131,11 @@ class GoogleAppsApi:
             try:
                 members_response = service.members().list(groupKey=group_id).execute(http=self.http)
                 if members_response and members_response.get('members'):
+                    logger.debug('  Removing {} members from {}...'.format(members_response.get('members'), group_email_address))
                     for member in members_response.get('members'):
                         member_id = member.get('id', None)
                         service.members().delete(groupKey=group_id, memberKey=member_id).execute(http=self.http)
+                        time.sleep(2)
             except Exception as e:
                 logger.debug('    Group could not be found')
                 return False
