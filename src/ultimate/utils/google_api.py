@@ -16,6 +16,11 @@ logger = logging.getLogger("a2u.email_groups")
 # calls that were sprinkled between every member operation.
 API_NUM_RETRIES = 5
 
+# Maximum number of sub-requests to send in a single batch HTTP request. The
+# Directory API allows up to 1000, but Google recommends keeping batches at or
+# below 50 to stay clear of per-batch limits.
+API_BATCH_SIZE = 50
+
 
 class GoogleAppsApi:
     http = None
@@ -257,6 +262,57 @@ class GoogleAppsApi:
                 break
 
         return emails
+
+    def _execute_batch(self, service, operations, ok_statuses=()):
+        """Run member operations in batched HTTP requests.
+
+        ``operations`` is a list of (email_address, request) tuples, where each
+        request is an unexecuted googleapiclient request (e.g. a members insert
+        or delete). Requests are sent in chunks of API_BATCH_SIZE.
+
+        An HTTP error whose status is listed in ``ok_statuses`` is treated as
+        success (e.g. 409 "already a member" on an add, 404 "not a member" on a
+        delete). Returns (succeeded_emails, failed_emails) as two lists, where
+        failed_emails holds the addresses whose operation genuinely errored.
+        """
+        succeeded = []
+        failed = []
+
+        for start in range(0, len(operations), API_BATCH_SIZE):
+            chunk = operations[start : start + API_BATCH_SIZE]
+
+            # Map the synthetic request id back to the email it belongs to so
+            # the callback can record per-address success/failure.
+            id_to_email = {}
+
+            def callback(request_id, response, exception, id_to_email=id_to_email):
+                email = id_to_email.get(request_id)
+                if exception is None:
+                    succeeded.append(email)
+                elif (
+                    isinstance(exception, HttpError)
+                    and exception.resp.status in ok_statuses
+                ):
+                    succeeded.append(email)
+                else:
+                    logger.debug("  Failure for {}: {}".format(email, exception))
+                    failed.append(email)
+
+            batch = service.new_batch_http_request(callback=callback)
+            for email_address, request in chunk:
+                request_id = str(len(id_to_email) + 1)
+                id_to_email[request_id] = email_address
+                batch.add(request, request_id=request_id)
+
+            try:
+                batch.execute(http=self.http)
+            except Exception as error:
+                # A whole-batch transport failure: none of this chunk's
+                # callbacks fired, so count every address in it as failed.
+                logger.debug("  Batch request failed: {}".format(error))
+                failed.extend(email for email, _ in chunk)
+
+        return succeeded, failed
 
     def add_group_member(
         self, email_address, group_id=None, group_email_address=None, group_name=None
