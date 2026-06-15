@@ -1,5 +1,4 @@
 from datetime import datetime
-import time
 import dateutil.parser
 import httplib2
 import logging
@@ -7,9 +6,15 @@ import logging
 from django.conf import settings
 
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 from oauth2client.service_account import ServiceAccountCredentials
 
 logger = logging.getLogger("a2u.email_groups")
+
+# Number of times the client library retries a throttled/5xx request with
+# exponential backoff before giving up. Replaces the old fixed time.sleep()
+# calls that were sprinkled between every member operation.
+API_NUM_RETRIES = 5
 
 
 class GoogleAppsApi:
@@ -184,8 +189,7 @@ class GoogleAppsApi:
                         member_id = member.get("id", None)
                         service.members().delete(
                             groupKey=group_id, memberKey=member_id
-                        ).execute(http=self.http)
-                        time.sleep(2)
+                        ).execute(http=self.http, num_retries=API_NUM_RETRIES)
             except Exception:
                 logger.debug("    Group could not be found")
                 return False
@@ -215,11 +219,16 @@ class GoogleAppsApi:
                 response = (
                     service.members()
                     .insert(groupKey=group_id, body=body)
-                    .execute(http=self.http)
+                    .execute(http=self.http, num_retries=API_NUM_RETRIES)
                 )
                 logger.debug("  Success!")
-            except:
-                logger.debug("  Failure!")
+            except HttpError as error:
+                # A 409 means the address is already a member, which for a sync
+                # is a success, not a failure -- treat it as already present.
+                if error.resp.status == 409:
+                    logger.debug("  Already a member!")
+                    return True
+                logger.debug("  Failure! {}".format(error))
                 return False
 
         return response

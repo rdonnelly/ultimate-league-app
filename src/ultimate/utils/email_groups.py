@@ -1,4 +1,3 @@
-import time
 from ultimate.utils.google_api import GoogleAppsApi
 
 
@@ -9,7 +8,6 @@ def add_to_group(
     success_count = 0
 
     if email_address:
-        time.sleep(2)
         if api.add_group_member(
             email_address, group_id=group_id, group_email_address=group_email_address
         ):
