@@ -1,3 +1,4 @@
+from collections import namedtuple
 from datetime import datetime
 import dateutil.parser
 import httplib2
@@ -20,6 +21,17 @@ API_NUM_RETRIES = 5
 # Directory API allows up to 1000, but Google recommends keeping batches at or
 # below 50 to stay clear of per-batch limits.
 API_BATCH_SIZE = 50
+
+
+# Result of a diff-based group membership sync.
+#   target          - number of addresses the group should contain
+#   added/removed   - addresses successfully added/removed this run
+#   failed_add      - addresses that should have been added but errored
+#   failed_remove   - addresses that should have been removed but errored
+GroupSyncResult = namedtuple(
+    "GroupSyncResult",
+    ["target", "added", "removed", "failed_add", "failed_remove"],
+)
 
 
 class GoogleAppsApi:
@@ -313,6 +325,81 @@ class GoogleAppsApi:
                 failed.extend(email for email, _ in chunk)
 
         return succeeded, failed
+
+    def sync_group_members(
+        self, desired_emails, group_id=None, group_email_address=None
+    ):
+        """Make a group's membership match ``desired_emails`` with minimal calls.
+
+        Lists the current members, diffs against the desired set, and only adds
+        the addresses that are missing and removes the ones that should no
+        longer be there -- rather than emptying the group and re-adding
+        everyone. Adds and removes are sent in batched HTTP requests.
+
+        ``desired_emails`` is any iterable of email addresses (case is
+        normalized). Returns a GroupSyncResult.
+        """
+        service = build("admin", "directory_v1", http=self.http, cache_discovery=False)
+
+        if group_email_address and not group_id:
+            group_id = self._resolve_group_id(service, group_email_address)
+
+        desired = {email.lower() for email in desired_emails if email}
+        target = len(desired)
+
+        if not group_id:
+            logger.debug("  Group could not be resolved for sync")
+            return GroupSyncResult(
+                target=target,
+                added=[],
+                removed=[],
+                failed_add=sorted(desired),
+                failed_remove=[],
+            )
+
+        current = self.list_group_members(group_id=group_id)
+
+        to_add = sorted(desired - current)
+        to_remove = sorted(current - desired)
+
+        logger.debug(
+            "  Sync {}: {} desired, {} current, {} to add, {} to remove".format(
+                group_email_address or group_id,
+                target,
+                len(current),
+                len(to_add),
+                len(to_remove),
+            )
+        )
+
+        add_ops = [
+            (
+                email,
+                service.members().insert(
+                    groupKey=group_id, body={"email": email, "role": "MEMBER"}
+                ),
+            )
+            for email in to_add
+        ]
+        # 409: address is already a member -> already in the desired state.
+        added, failed_add = self._execute_batch(service, add_ops, ok_statuses=(409,))
+
+        remove_ops = [
+            (email, service.members().delete(groupKey=group_id, memberKey=email))
+            for email in to_remove
+        ]
+        # 404: address is not a member -> already in the desired state.
+        removed, failed_remove = self._execute_batch(
+            service, remove_ops, ok_statuses=(404,)
+        )
+
+        return GroupSyncResult(
+            target=target,
+            added=added,
+            removed=removed,
+            failed_add=failed_add,
+            failed_remove=failed_remove,
+        )
 
     def add_group_member(
         self, email_address, group_id=None, group_email_address=None, group_name=None
