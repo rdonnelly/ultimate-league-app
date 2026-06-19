@@ -5,7 +5,9 @@ django-hijack>=3.2.6,<4
 django-paypal>=1.1.2,<3
 django-simple-captcha>=0.5.17,<0.6
 django-webpack-loader>=1.8,<2
-google-api-python-client==1.6.2
+google-api-python-client>=2,<3
+google-auth>=2,<3
+google-auth-httplib2>=0.1,<0.3
 gunicorn>=20.1,<23
 markdown2>=2.4,<3
 mysqlclient>=1.4.6,<3

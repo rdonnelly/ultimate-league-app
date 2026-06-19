@@ -1,14 +1,15 @@
 from collections import namedtuple
 from datetime import datetime
 import dateutil.parser
-import httplib2
 import logging
 
 from django.conf import settings
 
+import google_auth_httplib2
+import httplib2
+from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-from oauth2client.service_account import ServiceAccountCredentials
 
 logger = logging.getLogger("a2u.email_groups")
 
@@ -43,14 +44,16 @@ class GoogleAppsApi:
         account = getattr(settings, "GOOGLE_APPS_API_ACCOUNT", False)
 
         if credentials_file and scopes and account:
-            credentials = ServiceAccountCredentials.from_json_keyfile_name(
+            # google-auth replaces the long-dead oauth2client. Domain-wide
+            # delegation (impersonating `account`) is done via with_subject,
+            # which supersedes oauth2client's credentials._kwargs["sub"].
+            credentials = service_account.Credentials.from_service_account_file(
                 credentials_file, scopes=scopes
+            ).with_subject(account)
+
+            self.http = google_auth_httplib2.AuthorizedHttp(
+                credentials, http=httplib2.Http()
             )
-
-            credentials._kwargs["sub"] = account
-
-            self.http = httplib2.Http()
-            self.http = credentials.authorize(self.http)
 
     def prepare_group_for_sync(
         self, group_name, group_id=None, group_email_address=None, force=False
