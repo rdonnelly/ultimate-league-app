@@ -6,7 +6,7 @@ admin.autodiscover()
 
 urlpatterns = [
     url(r'^', include('ultimate.index.urls')),
-    url(r'^admin/', include(admin.site.urls)),
+    url(r'^admin/', admin.site.urls),
     url(r'^captain/', include('ultimate.captain.urls')),
     url(r'^junta/', include('ultimate.junta.urls')),
     url(r'^leagues/', include('ultimate.leagues.urls')),

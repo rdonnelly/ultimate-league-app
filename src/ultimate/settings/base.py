@@ -94,9 +94,8 @@ INSTALLED_APPS = (
 
     'anymail',
     'captcha',
-    'compat',
     'hijack',
-    'hijack_admin',
+    'hijack.contrib.admin',
     'markdown_deux',
     'paypal.standard.ipn',
     'webpack_loader',
@@ -206,9 +205,10 @@ GOOGLE_APPS_CALENDAR_ID = env('GOOGLE_APPS_CALENDAR_ID')
 ANNOUNCEMENTS_GROUP_ADDRESS = env('ANNOUNCEMENTS_GROUP_ADDRESS')
 
 
-# Hijack
-HIJACK_ALLOW_GET_REQUESTS = True
-HIJACK_REGISTER_ADMIN = False
+# Hijack (django-hijack 3.x). The 2.x flags HIJACK_ALLOW_GET_REQUESTS and
+# HIJACK_REGISTER_ADMIN were removed; impersonation is now POST-only via the
+# admin button and gated by a permission check. Restrict to superusers.
+HIJACK_PERMISSION_CHECK = 'hijack.permissions.superusers_only'
 
 
 # Markdown

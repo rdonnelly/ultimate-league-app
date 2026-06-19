@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.auth import get_user_model
-from django.forms.extras import SelectDateWidget
+from django.forms.widgets import SelectDateWidget
 from django.utils.translation import ugettext_lazy as _
 from django.utils import timezone
 

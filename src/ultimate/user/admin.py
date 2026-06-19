@@ -5,7 +5,7 @@ from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.utils.html import format_html
 from django.utils.translation import ugettext_lazy as _
 
-from hijack_admin.admin import HijackUserAdminMixin
+from hijack.contrib.admin import HijackUserAdminMixin
 from paypal.standard.ipn.admin import PayPalIPNAdmin
 from paypal.standard.ipn.models import PayPalIPN
 
@@ -26,7 +26,7 @@ class PlayerInline(admin.StackedInline):
     verbose_name_plural = 'player'
 
 
-class UserAdmin(BaseUserAdmin, HijackUserAdminMixin):
+class UserAdmin(HijackUserAdminMixin, BaseUserAdmin):
     fieldsets = (
         (None, {'fields': ('email', 'password')}),
         (_('Personal info'), {'fields': ('first_name', 'last_name')}),
@@ -42,9 +42,10 @@ class UserAdmin(BaseUserAdmin, HijackUserAdminMixin):
     )
 
     inlines = (PlayerInline,)
+    # django-hijack 3.x's HijackUserAdminMixin appends its own hijack column to
+    # the changelist automatically; no explicit 'hijack_field' entry needed.
     list_display = ('email', 'first_name', 'last_name',
-                    'is_staff', 'is_superuser', 'date_joined',
-                    'hijack_field',)
+                    'is_staff', 'is_superuser', 'date_joined',)
     list_filter = BaseUserAdmin.list_filter + ('groups__name',)
     ordering = ('email',)
     search_fields = ('email', 'first_name', 'last_name',)
