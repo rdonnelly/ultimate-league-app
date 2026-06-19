@@ -53,7 +53,6 @@ TIME_ZONE = 'America/Detroit'
 LANGUAGE_CODE = 'en-us'
 
 USE_I18N = True
-USE_L10N = True
 USE_TZ = False
 
 MEDIA_ROOT = os.path.join(BASE_DIR, '../media')
@@ -102,7 +101,6 @@ INSTALLED_APPS = (
     'captcha',
     'hijack',
     'hijack.contrib.admin',
-    'markdown_deux',
     'paypal.standard.ipn',
     'webpack_loader',
 
@@ -216,17 +214,6 @@ ANNOUNCEMENTS_GROUP_ADDRESS = env('ANNOUNCEMENTS_GROUP_ADDRESS')
 # admin button and gated by a permission check. Restrict to superusers.
 HIJACK_PERMISSION_CHECK = 'hijack.permissions.superusers_only'
 
-
-# Markdown
-MARKDOWN_DEUX_STYLES = {
-    'default': {
-        'extras': {
-            'header-ids': True,
-            'target-blank-links': True,
-        },
-        'safe_mode': False,
-    },
-}
 
 # Email
 DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL')
