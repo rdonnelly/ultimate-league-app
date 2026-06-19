@@ -69,7 +69,7 @@ WEBPACK_LOADER = {
 # Make this unique, and don't share it with anybody.
 SECRET_KEY = env('SECRET_KEY')
 
-MIDDLEWARE_CLASSES = (
+MIDDLEWARE = (
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
@@ -99,7 +99,6 @@ INSTALLED_APPS = (
     'hijack_admin',
     'markdown_deux',
     'paypal.standard.ipn',
-    'pytils',
     'webpack_loader',
 
     'ultimate',

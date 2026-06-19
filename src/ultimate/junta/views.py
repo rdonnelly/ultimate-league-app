@@ -9,7 +9,7 @@ from math import ceil, floor
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required, user_passes_test
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.db.models import F, Q
 from django.db.transaction import atomic
 from django.http import HttpResponseRedirect, HttpResponse

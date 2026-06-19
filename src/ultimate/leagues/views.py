@@ -3,7 +3,7 @@ import uuid
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.db import IntegrityError
 from django.db.models import ObjectDoesNotExist, Q
 from django.db.transaction import atomic
@@ -103,7 +103,7 @@ def players(request, year, season, division):
         raise Http404('Division Not Found')
 
     user_registration = None
-    if request.user.is_authenticated():
+    if request.user.is_authenticated:
         try:
             user_registration = Registrations.objects.get(user=request.user, league=league)
         except ObjectDoesNotExist:
@@ -158,7 +158,7 @@ def teams(request, year, season, division):
 
     next_game_date = getattr(games.filter(date__gte=timezone.now().date()).first(), 'date', None)
 
-    if request.user.is_authenticated():
+    if request.user.is_authenticated:
         user_games = games.filter(league=league, gameteams__team__teammember__user=request.user).order_by('date')
 
     return render(request, 'leagues/teams.html',

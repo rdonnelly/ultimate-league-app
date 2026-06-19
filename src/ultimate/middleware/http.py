@@ -3,6 +3,7 @@ from importlib import import_module
 from django.conf import settings
 from django.http import HttpResponseForbidden
 from django.template import RequestContext,Template,loader,TemplateDoesNotExist
+from django.utils.deprecation import MiddlewareMixin
 
 """
 # Middleware to allow the display of a 403.html template when a
@@ -12,7 +13,7 @@ from django.template import RequestContext,Template,loader,TemplateDoesNotExist
 class Http403(Exception):
     pass
 
-class Http403Middleware(object):
+class Http403Middleware(MiddlewareMixin):
     def process_exception(self, request, exception):
         from .http import Http403
 
