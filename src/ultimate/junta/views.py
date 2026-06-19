@@ -14,7 +14,6 @@ from django.db.models import F, Q
 from django.db.transaction import atomic
 from django.http import HttpResponseRedirect, HttpResponse
 from django.shortcuts import get_object_or_404, render
-from django.template import RequestContext
 from django.utils import timezone
 
 from ultimate.forms import ScheduleGenerationForm

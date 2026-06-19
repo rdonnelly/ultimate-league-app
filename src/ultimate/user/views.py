@@ -5,7 +5,6 @@ from django.db.models import Q
 from django.db.transaction import atomic
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
-from django.template import RequestContext
 from django.utils import timezone
 
 from ultimate.leagues.models import Game, League

@@ -2,7 +2,7 @@ from importlib import import_module
 
 from django.conf import settings
 from django.http import HttpResponseForbidden
-from django.template import RequestContext,Template,loader,TemplateDoesNotExist
+from django.template import TemplateDoesNotExist, engines, loader
 from django.utils.deprecation import MiddlewareMixin
 
 """
@@ -31,8 +31,8 @@ class Http403Middleware(MiddlewareMixin):
                 # First look for a user-defined template named "403.html"
                 t = loader.get_template('403.html')
             except TemplateDoesNotExist:
-                # If a template doesn't exist in the projct, use the following hardcoded template
-                t = Template("""{% load i18n %}
+                # If a template doesn't exist in the project, use the following hardcoded template
+                t = engines['django'].from_string("""{% load i18n %}
                     <!DOCTYPE html>
                     <html lang="en">
                     <head>
@@ -44,9 +44,9 @@ class Http403Middleware(MiddlewareMixin):
                     </body>
                     </html>""")
 
-            # Now use context and render template
-            c = RequestContext(request, {
-                'message': exception.message
-            })
-
-            return HttpResponseForbidden(t.render(c))
+            # RequestContext was removed in Django 3.0; the backend template's
+            # render() takes a plain context dict plus the request. Python 3
+            # exceptions have no .message attribute -- use str(exception).
+            return HttpResponseForbidden(
+                t.render({'message': str(exception)}, request)
+            )

@@ -43,6 +43,12 @@ DATABASES = {
     }
 }
 
+# Keep the historical 32-bit AutoField default (Django <3.2 behavior) so the
+# existing schema's integer primary keys are preserved and no BigAutoField
+# migrations are generated. Revisit if/when a deliberate migration to
+# BigAutoField is desired.
+DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
+
 TIME_ZONE = 'America/Detroit'
 LANGUAGE_CODE = 'en-us'
 

@@ -9,7 +9,6 @@ from django.db.models import ObjectDoesNotExist, Q
 from django.db.transaction import atomic
 from django.http import Http404, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
-from django.template import RequestContext
 from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
 
