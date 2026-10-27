@@ -658,7 +658,7 @@ class League(models.Model):
         locations = list(locations.values())
         locations.sort(key=lambda k: k["field"].name)
         locations.sort(key=lambda k: k["field_name"].name)
-        locations.sort(key=lambda k: k["start"])
+        locations.sort(key=lambda k: (k["start"] is None, k["start"] or time.min))
 
         return locations
 
